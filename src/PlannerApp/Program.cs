@@ -6,6 +6,7 @@ using PlannerApp.Shared.Constants;
 using System;
 using System.Net.Http;
 using Blazored.LocalStorage;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace PlannerApp
 {
@@ -28,7 +29,8 @@ namespace PlannerApp
 
             builder.Services.AddMudServices();
             builder.Services.AddBlazoredLocalStorage();
-
+            builder.Services.AddAuthorizationCore();
+            builder.Services.AddScoped<AuthenticationStateProvider, JwtAuthenticationStateProvider>();
 
 
 
