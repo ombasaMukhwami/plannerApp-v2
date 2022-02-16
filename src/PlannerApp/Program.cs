@@ -1,15 +1,12 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
-using MudBlazor;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using MudBlazor.Services;
+using PlannerApp.Shared.Constants;
+using System;
+using System.Net.Http;
+using System.Threading;
+using Blazored.LocalStorage;
 
 namespace PlannerApp
 {
@@ -20,11 +17,45 @@ namespace PlannerApp
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
 
-            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+            //builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+
+            builder.Services.AddHttpClient(PlannerVariables.PLANNER_API, client =>
+            {
+                client.BaseAddress = new Uri(PlannerVariables.PLANNER_API_URL);
+            }).AddHttpMessageHandler<AuthorizationMessageHandle>();
+
+            builder.Services.AddTransient<AuthorizationMessageHandle>();
+            builder.Services.AddScoped(sp => sp.GetService<IHttpClientFactory>().CreateClient(PlannerVariables.PLANNER_API));
 
             builder.Services.AddMudServices();
+            builder.Services.AddBlazoredLocalStorage();
+
+
 
             await builder.Build().RunAsync();
+        }
+    }
+
+    public class AuthorizationMessageHandle:DelegatingHandler
+    {
+        private readonly ILocalStorageService _storage;
+
+        public AuthorizationMessageHandle(ILocalStorageService storage)
+        {
+            _storage = storage;
+        }
+        protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+
+            if(await _storage.ContainKeyAsync(PlannerVariables.ACCESS_TOKEN))
+            {
+                var token = await _storage.GetItemAsStringAsync(PlannerVariables.ACCESS_TOKEN);
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(PlannerVariables.BEARER, token);
+            }
+
+            Console.WriteLine("AUTHORIZATIONMESSAGE HANDLER CALLED");
+
+            return await base.SendAsync(request, cancellationToken);
         }
     }
 }
